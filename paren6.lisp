@@ -13,7 +13,7 @@ ES6 introduced the let keyword, which allows for block-scoped variables which ca
 // ES5
 var x = 0;
 
-// ES6 
+// ES6
 let x = 0;
 
     MDN Reference: let
@@ -107,10 +107,10 @@ results in
                 (setf spreadp nil)
                 (push `(merge ,stor ,itm) accum)))
           (if (listp itm)
-              (push `(merge ,stor (create ,@itm)))
+              (push `(merge ,stor (create ,@itm)) accum)
               (if (eq itm :...)
                   (setf spreadp t)
-                  (push `(setf (@ ,stor ,itm) ,itm))))))
+                  (push `(setf (@ ,stor ,itm) ,itm) accum)))))
     `(let ((,stor (create)))
        (labels ((merge (target obj)
                   (chain #:|Object|
@@ -299,23 +299,28 @@ Classes/constructor functions
 ;;import-as import-from export
 
 (defpsmacro export ((&rest symbol-list) &key from source)
-  (let ((obj (gensym)))
+  (let ((obj (gensym))
+        (objsource (cond
+                     ((from `(require ,from)))
+                     ((source source)))))
     (when (and from source)
       (error "Only one of :from or :source can be used per export invocation."))
     (unless (or symbol-list from source)
       (error
        "Either a list of symbols must be supplied or a :from or :source parameter must be present."))
-    `(let ((,obj ,(cond
-                    ((from `(require ,from)))
-                    ((source source)))))
-       ,@(mapcar (lambda (sym)
-                   (let* ((outsym (if (listp sym) (second sym) sym))
-                          (insym (if (listp sym) (car sym) sym))
-                          (insrc (if ,obj `(@ ,obj ,sym) sym)))
-                     `(setf (@ module exports ,outsym) ,insrc)))
-                 ,(if symbol-list
-                      symbol-list
-                      (chain -object (keys ,obj)))))))
+    `(let ((,obj ,objsource))
+       ,@(if symbol-list
+             (mapcar (lambda (sym)
+                       (let* ((outsym (if (listp sym) (second sym) sym))
+                              (insym (if (listp sym) (car sym) sym))
+                              (insrc (if objsource `(@ ,obj ,sym) sym)))
+                         `(setf (@ module exports ,outsym) ,insrc)))
+                     symbol-list)
+             `((chain #:|Object|
+                      (#:keys ,obj)
+                      (#:for-each (lambda (key)
+                                    (setf (getprop (@ module exports) key)
+                                          (getprop ,obj key))))))))))
 
 (defpsmacro export-default (item &key from)
   (let ((obj (gensym))

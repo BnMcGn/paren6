@@ -2,4 +2,11 @@
 
 (defpackage #:paren6
   (:use #:cl
-        #:parenscript))
+        #:parenscript)
+  (:export
+   #:export
+   #:export-default
+   #:import
+   #:list6
+   #:create6
+   #:=>))

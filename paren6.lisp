@@ -28,9 +28,9 @@ let x = 0;
 This version may not work in block scope."
   `(chain -object
           (define-property
-              (if (eql (typeof global) "object" global window)
-                  ,name
-                  (create :value ,value :enumerable t :writable false :configurable false)))))
+              (if (eql (typeof global) "object") global window)
+              ,name
+            (create :value ,value :enumerable t :writable false :configurable false))))
 
 #|
 Constant declaration
@@ -45,7 +45,8 @@ const CONST_IDENTIFIER = 0; // constants are uppercase by convention
 |#
 
 (defpsmacro => (params &body body)
-  `(chain (lambda (,params) ,@body) (bind this)))
+  (let ((params (if (listp params) params (list params))))
+    `(chain (lambda ,params ,@body) (bind this))))
 
 #|
 Arrow functions
@@ -117,7 +118,8 @@ results in
                          (#:keys obj)
                          (#:for-each (lambda (key) (setf (getprop target key)
                                                          (getprop obj key)))))))
-         ,@(nreverse accum)))))
+         ,@(nreverse accum))
+       ,stor)))
 
 #|
 Key/property shorthand
@@ -219,7 +221,7 @@ results in
               (error ":... can't follow :...")
               (progn
                 (when curr
-                  (push (nreverse curr) accum)
+                  (push (cons 'list (nreverse curr)) accum)
                   (setf curr nil))
                 (setf spreadp t)))
           (if spreadp
@@ -228,8 +230,8 @@ results in
                 (setf spreadp nil))
               (push itm curr))))
     (when curr
-      (push (nreverse curr) accum))
-    `(concatenate 'list ,@(nreverse accum))))
+      (push (cons 'list (nreverse curr)) accum))
+    `(apply (@ -array prototype concat) ,@(nreverse accum))))
 
 ;; For function arguments: we have apply. Otherwise, this might need to be implemented
 ;; at the parenscript level.
@@ -265,7 +267,7 @@ console.log(func(...arr1);); // 6
 ;;FIXME: add setter/getter and super support
 ;;FIXME: check over "extends" expression support.
 
-(defpsmacro defclass6 (name (&optional extends) &body body)
+(defpsmacro defclass6 ((name &optional extends) &body body)
   (let ((constructor nil)
         (methods nil))
     (dolist (itm body)
@@ -278,16 +280,19 @@ console.log(func(...arr1);); // 6
          (push (proc-method name itm) methods))
         ((string-equal (car itm) 'defstatic)
          (push (proc-static name itm) methods))
-        (t (error) "Defclass6 only allows defmethod or defstatic calls in its body")))
+        (t (error "Defclass6 only allows defmethod or defstatic calls in its body"))))
+    (when constructor
+      (unless (< 2 (length constructor))
+        (error "Constructor needs a parameter list")))
     ;;FIXME: onceonly on name? or ensure symbol
     `(progn
-       ,@methods
        ,(if constructor
-            `(defun ,name ,(second constructor) ,(cddr constructor))
+            `(defun ,name ,(third constructor) ,(cdddr constructor))
             `(defun ,name ()))
-       ,(when extends
-          `(setf (@ ,name prototype) (chain -object (create (@ ,extends prototype))))
-          `(setf (@ ,name prototype constructor) ,name)))))
+       ,@methods
+       ,@(when extends
+           (list `(setf (@ ,name prototype) (chain -object (create (@ ,extends prototype))))
+                 `(setf (@ ,name prototype constructor) ,name))))))
 
 #|
 
@@ -301,10 +306,12 @@ Classes/constructor functions
 (defpsmacro export ((&rest symbol-list) &key from source)
   (let ((obj (gensym))
         (objsource (cond
-                     ((from `(require ,from)))
-                     ((source source)))))
+                     (from `(require ,from))
+                     (source source))))
     (when (and from source)
       (error "Only one of :from or :source can be used per export invocation."))
+    (when (and from (not (stringp from)))
+      (error "Exported module name in :from must be a string"))
     (unless (or symbol-list from source)
       (error
        "Either a list of symbols must be supplied or a :from or :source parameter must be present."))
@@ -313,7 +320,7 @@ Classes/constructor functions
              (mapcar (lambda (sym)
                        (let* ((outsym (if (listp sym) (second sym) sym))
                               (insym (if (listp sym) (car sym) sym))
-                              (insrc (if objsource `(@ ,obj ,sym) sym)))
+                              (insrc (if objsource `(@ ,obj ,insym) insym)))
                          `(setf (@ module exports ,outsym) ,insrc)))
                      symbol-list)
              `((chain #:|Object|
@@ -323,15 +330,21 @@ Classes/constructor functions
                                           (getprop ,obj key))))))))))
 
 (defpsmacro export-default (item &key from)
-  (let ((obj (gensym))
-        (itemsym (gensym)))
-    `(let ((,itemsym ,item) ;; Once only
-           (,obj ,(when from `(require ,from))))
-       (setf (@ module exports (if ,obj (if ,itemsym (@ ,obj ,itemsym) ,obj) ,itemsym))))))
+  (let ((obj (gensym)))
+    (when (and from (not (stringp from)))
+      (error "Exported module name in :from must be a string"))
+    (if from
+        (if item
+            `(let ((,obj (require ,from)))
+               (setf (@ module exports) (@ ,obj ,item)))
+            `(setf (@ module exports) (require ,from)))
+        (if item
+            `(setf (@ module exports) ,item)
+            (error "Nothing to export")))))
 
 (defpsmacro import ((&rest names) module)
   (let ((modstor (gensym "modstor")))
-    `(let ((,modstor (require module)))
+    `(let ((,modstor (require ,module)))
        ,@(mapcar
           (lambda (name)
             (cond
@@ -342,7 +355,8 @@ Classes/constructor functions
                      (if (and ,modstor (@ ,modstor __es-module))
                          (@ ,modstor default)
                          ,modstor)))
-              (t `(var ,(second name) ,(car name)))))))))
+              (t `(var ,(second name) (@ ,modstor ,(car name))))))
+          names))))
 
 
 #|

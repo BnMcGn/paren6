@@ -246,9 +246,29 @@ Spread syntax can be used for function arguments.
 let arr1 = [1, 2, 3];
 let func = (a, b, c) => a + b + c;
 
-console.log(func(...arr1);); // 6 
+console.log(func(...arr1);); // 6
 
 |#
+
+(defun super-wrap (code superclass)
+  ;;Only add access to super class constructor if there is a parent class
+  (when (some (lambda (x)
+                (starts-with-subseq (string x) (string 'super.)))
+              (flatten code))
+    (warn "Defclass6 doesn't handle super calls of the form super.xxx. Please rewrite as (chain super (xxx ...))"))
+  (if superclass
+      `(macrolet ((super (&rest params)
+                    `(chain ,,superclass (call this ,@params)))
+                  (chain (&body body)
+                    (if (string-equal (car body) 'super)
+                        (if (listp (second body))
+                            (destructuring-bind (_ (method &rest params) &rest more) body
+                              `(chain (@ ,superclass prototype ,method (call this ,@params) ,@more)))
+                            ;; Hope this is what is wanted... could also be ,superclass prototype
+                            `(chain ,superclass ,@(cdr body)))
+                        `(chain ,@body))))
+         ,@code)
+      code))
 
 (defun proc-method (classname code)
   (let ((methodname (second code))
@@ -277,9 +297,9 @@ console.log(func(...arr1);); // 6
              (error "Class can't have more than one constructor")
              (setf constructor itm)))
         ((string-equal (car itm) 'defmethod)
-         (push (proc-method name itm) methods))
+         (push (super-wrap (proc-method name itm) extends) methods))
         ((string-equal (car itm) 'defstatic)
-         (push (proc-static name itm) methods))
+         (push (super-wrap (proc-static name itm) extends) methods))
         (t (error "Defclass6 only allows defmethod or defstatic calls in its body"))))
     (when constructor
       (unless (< 2 (length constructor))
@@ -287,7 +307,7 @@ console.log(func(...arr1);); // 6
     ;;FIXME: onceonly on name? or ensure symbol
     `(progn
        ,(if constructor
-            `(defun ,name ,(third constructor) ,(cdddr constructor))
+            (super-wrap `(defun ,name ,(third constructor) ,(cdddr constructor)) extends)
             `(defun ,name ()))
        ,@methods
        ,@(when extends
@@ -304,6 +324,13 @@ Classes/constructor functions
 ;;import-as import-from export
 
 (defpsmacro export ((&rest symbol-list) &key from source)
+  "The export macro registers items in the module.exports object so that the current Javascript file can be imported by other files.
+
+The first parameter, a list of symbols, is the set of names to be added to the export list. It will be taken from the environment if no :from or :source parameter is specified. If the symbol list is empty, the entire :from or :source object will have its keys exported. If no :from or :source is specified, then the symbol list can not be empty.
+
+Use the :from keyword to export from another module or submodule. The :source keyword is used to export an object or portions of an object in the current namespace.
+
+Note that paren6 uses CommonJS exports internally. Because CommonJS doesn't have a dedicated slot for default exports, mixing calls to export and export-default within the same module will cause overwriting."
   (let ((obj (gensym))
         (objsource (cond
                      (from `(require ,from))
@@ -330,6 +357,9 @@ Classes/constructor functions
                                           (getprop ,obj key))))))))))
 
 (defpsmacro export-default (item &key from)
+  "The export-default macro replaces the contents of module.exports with the specified item. If the :from parameter names a module, item will be taken from that module. If item is NIL, the whole module will be exported.
+
+Note that export-default will overwrite the results of any earlier calls to export or export-default."
   (let ((obj (gensym)))
     (when (and from (not (stringp from)))
       (error "Exported module name in :from must be a string"))
@@ -343,6 +373,9 @@ Classes/constructor functions
             (error "Nothing to export")))))
 
 (defpsmacro import ((&rest names) module)
+  "Import from a javascript file or library. The second parameter, module, is a string that specifies the source. The first parameter is a list of names to be bound to things from the incoming module.
+
+Import expects that any symbol in the names list can be found in the import. The item will be bound to the same name in the current environment. If you wish to bind something "
   (let ((modstor (gensym "modstor")))
     `(let ((,modstor (require ,module)))
        ,@(mapcar
@@ -360,41 +393,6 @@ Classes/constructor functions
 
 
 #|
-
-export default 42;
-
-Out
-
-Object.defineProperty(exports, "__esModule", {
-  value: true
-});
-
-exports.default = 42;
-
-
-Modules - export/import
-
-Modules can be created to export and import code between files.
-
-<!-- index.html -->
-<script src="export.js"></script>
-<script type="module" src="import.js"></script>
-
-// export.js
-let func = a => a + a;
-let obj = {};
-let x = 0;
-
-export { func, obj, x };
-
-// import.js
-import { func, obj, x } from './export.js';
-
-console.log(func(3), obj, x);
-
-    MDN Reference: export
-    MDN Reference: import
-
 Promises/Callbacks
 
 Promises represent the completion of an asynchronous function. They can be used as an alternative to chaining functions.

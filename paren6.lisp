@@ -73,6 +73,38 @@ Implicit returns
 
 |#
 
+(defun getters-and-setters (target funcs)
+  "Generates code from funcs to add getters and setters to the object specified by target. Used by the create6 and defclass6 macros."
+  (let ((stor (make-hash-table))
+        (results nil))
+    (dolist (func funcs)
+      (unless (gethash (second func) stor)
+        (setf (gethash (second func) stor) (list nil nil)))
+      (setf (elt (gethash (second func) stor)
+                 (cond
+                   ((string-equal 'get (car func)) 0)
+                   ((string-equal 'set (car func)) 1)
+                   (t (error "Set/get spec must begin with set or get"))))
+            func))
+    (maphash-values
+     (lambda (funcs)
+       (let ((get (car funcs))
+             (set (second funcs)))
+         (push
+          `(chain
+            -object
+            (define-property
+                ,target ,(symbol-to-js-string (second (or get set)))
+              (create
+               ,@(when get
+                   `(get (lambda ,@(cddr get))))
+               ,@(when set
+                   `(set (lambda ,@(cddr set)))))))
+          results)))
+     stor)
+    results))
+
+
 (defpsmacro create6 (&rest items-pairlists-and-dotted)
   "Due to the differences in lisp vs. javascript syntax, the ES6 shorthand for same name properties is somewhat counterintuitive. Create6 implements it by assuming that any symbol found at the top level of the macro is meant to refer to a variable of the same name. Non same name pairs must be placed in parentheses.
 
@@ -250,69 +282,82 @@ console.log(func(...arr1);); // 6
 
 |#
 
-(defun super-wrap (code superclass)
+(setf (gethash 'chain2 parenscript::*macro-toplevel*) (gethash 'chain parenscript::*macro-toplevel*))
+
+(defun super-wrap (code superclass has-super)
   ;;Only add access to super class constructor if there is a parent class
   (when (some (lambda (x)
-                (starts-with-subseq (string x) (string 'super.)))
+                (and (symbolp x)
+                     (starts-with-subseq (string 'super.) (string x))))
               (flatten code))
-    (warn "Defclass6 doesn't handle super calls of the form super.xxx. Please rewrite as (chain super (xxx ...))"))
-  (if superclass
+    (warn
+     "Defclass6 doesn't handle super calls of the form super.x - please rewrite as (chain super (x ...))"))
+  (if has-super
       `(macrolet ((super (&rest params)
-                    `(chain ,,superclass (call this ,@params)))
+                    `(chain2 ,,`',superclass (call this ,@params)))
                   (chain (&body body)
                     (if (string-equal (car body) 'super)
                         (if (listp (second body))
                             (destructuring-bind (_ (method &rest params) &rest more) body
-                              `(chain (@ ,superclass prototype ,method (call this ,@params) ,@more)))
+                              (declare (ignore _))
+                              `(chain2 ,,`',superclass prototype ,method
+                                       (call this ,@params) ,@more))
                             ;; Hope this is what is wanted... could also be ,superclass prototype
-                            `(chain ,superclass ,@(cdr body)))
-                        `(chain ,@body))))
-         ,@code)
+                            `(chain2 ,,`',superclass ,@(cdr body)))
+                        `(chain2 ,@body))))
+         ,code)
       code))
 
-(defun proc-method (classname code)
+(defun proc-defun (classname code)
   (let ((methodname (second code))
         (params (third code))
         (body (cdddr code)))
     `(setf (@ ,classname prototype ,methodname)
-          (lambda ,params ,body))))
+          (lambda ,params ,@body))))
 
 (defun proc-static (classname code)
   (let ((methodname (second code))
         (params (third code))
         (body (cdddr code)))
     `(setf (@ ,classname ,methodname)
-           (lambda ,params ,body))))
+           (lambda ,params ,@body))))
 
 ;;FIXME: add setter/getter and super support
 ;;FIXME: check over "extends" expression support.
 
 (defpsmacro defclass6 ((name &optional extends) &body body)
   (let ((constructor nil)
-        (methods nil))
+        (methods nil)
+        (extends-sym (gensym "extends"))
+        (get-and-set nil))
     (dolist (itm body)
       (cond
         ((string-equal (second itm) 'constructor)
          (if constructor
              (error "Class can't have more than one constructor")
              (setf constructor itm)))
-        ((string-equal (car itm) 'defmethod)
-         (push (super-wrap (proc-method name itm) extends) methods))
+        ((string-equal (car itm) 'defun)
+         (push (super-wrap (proc-defun name itm) extends-sym extends) methods))
         ((string-equal (car itm) 'defstatic)
-         (push (super-wrap (proc-static name itm) extends) methods))
-        (t (error "Defclass6 only allows defmethod or defstatic calls in its body"))))
+         (push (super-wrap (proc-static name itm) extends-sym extends) methods))
+        ((string-equal (car itm) 'get)
+         (push itm get-and-set))
+        ((string-equal (car itm) 'set)
+         (push itm get-and-set))
+        (t (error "Defclass6 only allows defun, defstatic, get and set calls in its body"))))
     (when constructor
       (unless (< 2 (length constructor))
         (error "Constructor needs a parameter list")))
-    ;;FIXME: onceonly on name? or ensure symbol
-    `(progn
+    `(let ((,extends-sym ,extends))
        ,(if constructor
-            (super-wrap `(defun ,name ,(third constructor) ,(cdddr constructor)) extends)
+            (super-wrap `(defun ,name ,(third constructor) ,(cdddr constructor)) extends-sym extends)
             `(defun ,name ()))
        ,@methods
        ,@(when extends
            (list `(setf (@ ,name prototype) (chain -object (create (@ ,extends prototype))))
-                 `(setf (@ ,name prototype constructor) ,name))))))
+                 `(setf (@ ,name prototype constructor) ,name)))
+       ,@(when get-and-set
+           (getters-and-setters `(@ ,name prototype) get-and-set)))))
 
 #|
 

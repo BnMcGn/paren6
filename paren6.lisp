@@ -5,24 +5,6 @@
 (in-package #:paren6)
 
 
-#|
-Variable declaration
-
-ES6 introduced the let keyword, which allows for block-scoped variables which cannot be hoisted or redeclared.
-
-// ES5
-var x = 0;
-
-// ES6
-let x = 0;
-
-    MDN Reference: let
-
-
-|#
-
-;;Defconstant?
-
 (defpsmacro const6 (name value)
   "As per ES6, the variable cannot be redeclared or redefined, but its contents may be mutable.
 This version may not work in block scope."
@@ -45,33 +27,10 @@ const CONST_IDENTIFIER = 0; // constants are uppercase by convention
 |#
 
 (defpsmacro => (params &body body)
+  "The parenscript equivalent of the ES6 arrow operator. => is different from lambda in two ways. It doesn't have its own copy of 'this' and when invoked with a single parameter, that parameter doesn't need to be enclosed in a list."
   (let ((params (if (listp params) params (list params))))
     `(chain (lambda ,params ,@body) (bind this))))
 
-#|
-Arrow functions
-
-The arrow function expression syntax is a shorter way of creating a function expression. Arrow functions do not have their own this, do not have prototypes, cannot be used for constructors, and should not be used as object methods.
-
-
-Template literals
-Concatenation/string interpolation
-
-;; Parenscript has (format)? Don't need. Also should be done at parenscript level.
-
-    MDN Reference: Expression interpolation
-
-Multi-line strings
-
-;; Parenscript has native support.
-
-
-Implicit returns
-
-;; Paren has already
-
-
-|#
 
 (defun getters-and-setters (target funcs)
   "Generates code from funcs to add getters and setters to the object specified by target. Used by the create6 and defclass6 macros."
@@ -128,10 +87,27 @@ Create6 also supports spread syntax in its top level. An object following the :.
 
 results in
 
-    {a: 1, b: 3, c: 2, d: 5} "
+    {a: 1, b: 3, c: 2, d: 5}
+
+Create6 allows the insertion of setters, getters and ordinary functions in place. Placed in the top level of the macro, they take this form:
+
+    (<functype> <name> (<lambda list>) <body>)
+
+where functype is one of get, set or defun. On the odd chance that you wish to start a toplevel list with one of these symbols and not have it turned into a function, use a keyword.
+
+    (create6 a b (defun c (...) ...) d (:get e))
+
+results in
+
+    {a: a,
+     b: b,
+     c: function (...) {...},
+     d: d,
+     get: e} "
   (let ((stor (gensym))
         (spreadp nil)
-        (accum (list)))
+        (accum (list))
+        (get-and-set nil))
     (dolist (itm items-pairlists-and-dotted)
       (if spreadp
           (if (eq itm :...)
@@ -140,7 +116,17 @@ results in
                 (setf spreadp nil)
                 (push `(merge ,stor ,itm) accum)))
           (if (listp itm)
-              (push `(merge ,stor (create ,@itm)) accum)
+              (if (keywordp (car itm))
+                  (push `(setf (@ ,stor ,itm) ,itm) accum)
+                  (cond
+                    ((string-equal (car itm) 'defun)
+                     (push `(setf (@ ,stor ,(second itm))
+                                  (lambda ,@(cddr itm))) accum))
+                    ((string-equal (car itm) 'get)
+                     (push itm get-and-set))
+                    ((string-equal (car itm) 'set)
+                     (push itm get-and-set))
+                    (t (push `(merge ,stor (create ,@itm)) accum))))
               (if (eq itm :...)
                   (setf spreadp t)
                   (push `(setf (@ ,stor ,itm) ,itm) accum)))))
@@ -151,89 +137,10 @@ results in
                          (#:for-each (lambda (key) (setf (getprop target key)
                                                          (getprop obj key)))))))
          ,@(nreverse accum))
+       ,@(when get-and-set
+           (getters-and-setters stor get-and-set))
        ,stor)))
 
-#|
-Key/property shorthand
-
-ES6 introduces a shorter notation for assigning properties to variables of the same name.
-
-// ES5
-var obj = { 
-    a: a, 
-    b: b
-}
-
-// ES6
-let obj = { 
-    a, 
-    b
-}
-
-    MDN Reference: Property definitions
-
-Method definition shorthand
-
-The function keyword can be omitted when assigning methods on an object.
-
-// ES5
-var obj = {
-    a: function(c, d) {},
-    b: function(e, f) {}
-};
-
-// ES6
-let obj = {
-    a(c, d) {},
-    b(e, f) {}
-}
-
-obj.a(); // call method a
-
-    MDN Reference: Method definitions
-
-|#
-
-;; Do we have a with-keys macro? Might want a read only version.
-;; With-slots will do the job. Ps version works with JS objects.
-
-
-
-#|
-
-
-Destructuring
-
-Use curly brackets to assign properties of an object to their own variable.
-
-var obj = { a: 1, b: 2, c: 3 };
-
-// ES5
-var a = obj.a;
-var b = obj.b;
-var c = obj.c;
-
-// ES6
-let {a, b, c} = obj;
-
-    MDN Reference: Object initializer
-
-|#
-
-;; Use dolist in place of for-of. We also have for-in.
-
-#|
-Array iteration (looping)
-
-// ES6
-for (let i of arr) {
-    console.log(i);
-}
-
-;; Parenscript already supports default parameters
-Default parameters
-
-|#
 
 (defpsmacro list6 (&rest items-and-lists)
   "List6 creates lists much like the regular list macro, but adds the `:...` spread syntax operator, allowing other lists to be spread into the created list.
@@ -265,22 +172,7 @@ results in
       (push (cons 'list (nreverse curr)) accum))
     `(apply (@ -array prototype concat) ,@(nreverse accum))))
 
-;; For function arguments: we have apply. Otherwise, this might need to be implemented
-;; at the parenscript level.
-
-#|
-Spread syntax
-
-
-Spread syntax can be used for function arguments.
-
-// ES6
-let arr1 = [1, 2, 3];
-let func = (a, b, c) => a + b + c;
-
-console.log(func(...arr1);); // 6
-
-|#
+;;;Defclass6 stuff
 
 (setf (gethash 'chain2 parenscript::*macro-toplevel*) (gethash 'chain parenscript::*macro-toplevel*))
 
@@ -322,10 +214,19 @@ console.log(func(...arr1);); // 6
     `(setf (@ ,classname ,methodname)
            (lambda ,params ,@body))))
 
-;;FIXME: add setter/getter and super support
-;;FIXME: check over "extends" expression support.
-
 (defpsmacro defclass6 ((name &optional extends) &body body)
+  "Defclass6 is used to define ES6 style classes. It takes the following form:
+
+    (defclass6 (classname parent)
+      (defun constructor () ...)
+      (defun method () ...)
+      (defstatic static-method () ...)
+      (get item () ...)
+      (set item (value) ...))
+
+The parent class is optional. If it is provided, then (super) is defined inside of the constructor and results in a call to the parent constructor. Bound superclass methods are available under (chain super (methodname ...)). Note that super.methodname style calls will not work.
+
+As in ES6, the method named 'constructor' is recognized as the constructor. Static methods, getters and setters are also available as per the form above. "
   (let ((constructor nil)
         (methods nil)
         (extends-sym (gensym "extends"))
@@ -359,14 +260,6 @@ console.log(func(...arr1);); // 6
        ,@(when get-and-set
            (getters-and-setters `(@ ,name prototype) get-and-set)))))
 
-#|
-
-
-Classes/constructor functions
-
-|#
-
-;;import-as import-from export
 
 (defpsmacro export ((&rest symbol-list) &key from source)
   "The export macro registers items in the module.exports object so that the current Javascript file can be imported by other files.

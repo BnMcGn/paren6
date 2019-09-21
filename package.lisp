@@ -12,4 +12,5 @@
    #:list6
    #:create6
    #:=>
-   #:defclass6))
+   #:defclass6
+   #:defconstant6))

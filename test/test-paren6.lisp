@@ -11,6 +11,10 @@
     (defvar chai (require "chai"))
     (defvar expect (@ chai expect))
 
+    (defconstant6 sample-constant t)
+
+    (setf sample-constant nil)
+
     (describe
      "list6"
      (lambda ()
@@ -57,6 +61,17 @@
              (chain
               (expect (funcall (=> x (+ x (@ this y))) 3))
               to be (equal 5))))))
+    (describe
+     "defconstant6"
+     (lambda ()
+       (it "Should set a constant"
+           (lambda ()
+             (chain (expect sample-constant) to be true)))
+       (it "Should not allow changes"
+           (lambda ()
+             (setf sample-constant nil)
+             (chain (expect sample-constant)
+                    to be true))))
     ))
 
   #|

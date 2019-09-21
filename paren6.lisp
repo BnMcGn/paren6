@@ -5,13 +5,12 @@
 (in-package #:paren6)
 
 
-(defpsmacro const6 (name value)
-  "As per ES6, the variable cannot be redeclared or redefined, but its contents may be mutable.
-This version may not work in block scope."
+(defpsmacro defconstant6 (name value)
+  "As per ES6, the variable cannot be redeclared or redefined, but its contents may be mutable."
   `(chain -object
           (define-property
               (if (eql (typeof global) "object") global window)
-              ,name
+              ,(symbol-to-js-string name)
             (create :value ,value :enumerable t :writable false :configurable false))))
 
 #|

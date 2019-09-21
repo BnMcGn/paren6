@@ -117,7 +117,7 @@ results in
                 (push `(merge ,stor ,itm) accum)))
           (if (listp itm)
               (if (keywordp (car itm))
-                  (push `(setf (@ ,stor ,itm) ,itm) accum)
+                  (push `(merge ,stor (create ,@itm)) accum)
                   (cond
                     ((string-equal (car itm) 'defun)
                      (push `(setf (@ ,stor ,(second itm))

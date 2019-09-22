@@ -87,7 +87,7 @@
         (defun constructor (size)
           (super (1- size)))
       (defun boast ()
-        (format nil "~a???" (chain super (boast)))))
+        (+ (chain super (boast)) "???")))
 
     (chain console (log big-thing))
 
@@ -98,7 +98,10 @@
      (lambda ()
        (it "Should call superclass constructor"
            (lambda ()
-             (chain (expect (@ thing size)) to (equal 18))))))
+             (chain (expect (@ thing size)) to (equal 18))))
+       (it "Should call superclass method"
+           (lambda ()
+             (chain (expect (chain thing (boast))) to (equal "36???"))))))
     ))
 
   #|

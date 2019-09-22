@@ -253,10 +253,10 @@ As in ES6, the method named 'constructor' is recognized as the constructor. Stat
        ,(if constructor
             (super-wrap `(defun ,name ,(third constructor) ,@(cdddr constructor)) extends-sym extends)
             `(defun ,name ()))
-       ,@methods
        ,@(when extends
            (list `(setf (@ ,name prototype) (chain -object (create (@ ,extends prototype))))
                  `(setf (@ ,name prototype constructor) ,name)))
+       ,@methods
        ,@(when get-and-set
            (getters-and-setters `(@ ,name prototype) get-and-set)))))
 

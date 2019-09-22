@@ -8,7 +8,7 @@
                #:paren6
                #:external-program) 
   :serial t
-  :components ((:module :t
+  :components ((:module :test
                         :serial t
                         :components ((:file "test-paren6")))))
 

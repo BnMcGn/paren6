@@ -24,6 +24,7 @@
               (expect (list6 1 :... (list 2 3 4) 5))
               ;; or: to have ordered (members (list 1 2 3 4 5))
               to be (an "array") that deep (equals (list 1 2 3 4 5)))))))
+
     (describe
      "create6"
      (lambda ()
@@ -52,6 +53,7 @@
        (it "Should allow the creation of object methods"
            (lambda ()
              (chain (expect (@ item action)) to be (a "function"))))))
+
     (describe
      "=>"
      (lambda ()
@@ -61,6 +63,7 @@
              (chain
               (expect (funcall (=> x (+ x (@ this y))) 3))
               to be (equal 5))))))
+
     (describe
      "defconstant6"
      (lambda ()
@@ -71,7 +74,31 @@
            (lambda ()
              (setf sample-constant nil)
              (chain (expect sample-constant)
-                    to be true))))
+                    to be true)))))
+
+    (defclass6 (big-thing)
+        (defun constructor (size)
+          (setf (@ this size) (chain big-thing (estimate size))))
+      (defstatic estimate (quantity)
+        (* 2 quantity))
+      (defun boast () (chain big-thing (estimate (@ this size)))))
+
+    (defclass6 (reasonable-thing big-thing)
+        (defun constructor (size)
+          (super (1- size)))
+      (defun boast ()
+        (format nil "~a???" (chain super (boast)))))
+
+    (chain console (log big-thing))
+
+    (defvar thing (new (reasonable-thing 10)))
+
+    (describe
+     "defclass6"
+     (lambda ()
+       (it "Should call superclass constructor"
+           (lambda ()
+             (chain (expect (@ thing size)) to (equal 18))))))
     ))
 
   #|
@@ -90,7 +117,7 @@ list6
 (defun run-tests ()
   (with-open-file (s (asdf:system-relative-pathname 'test-paren6 "test/tests.js")
                      :direction :output :if-exists :supersede :if-does-not-exist :create)
-    (write-string (tests) s))
+    (write-string (print (tests)) s))
   (uiop:with-current-directory ((asdf:system-source-directory 'test-paren6))
     (print
      (with-output-to-string (out)

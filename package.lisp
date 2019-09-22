@@ -13,4 +13,5 @@
    #:create6
    #:=>
    #:defclass6
-   #:defconstant6))
+   #:defconstant6
+   #:super))

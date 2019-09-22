@@ -248,9 +248,10 @@ As in ES6, the method named 'constructor' is recognized as the constructor. Stat
     (when constructor
       (unless (< 2 (length constructor))
         (error "Constructor needs a parameter list")))
-    `(let ((,extends-sym ,extends))
+    `(progn
+       (defvar ,extends-sym ,extends)
        ,(if constructor
-            (super-wrap `(defun ,name ,(third constructor) ,(cdddr constructor)) extends-sym extends)
+            (super-wrap `(defun ,name ,(third constructor) ,@(cdddr constructor)) extends-sym extends)
             `(defun ,name ()))
        ,@methods
        ,@(when extends

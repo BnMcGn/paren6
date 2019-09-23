@@ -6,7 +6,7 @@
   :license "Apache License, version 2.0"
   :depends-on (#:parenscript
                #:paren6
-               #:external-program) 
+               #:external-program)
   :serial t
   :components ((:module :test
                         :serial t

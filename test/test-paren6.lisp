@@ -87,7 +87,11 @@
         (defun constructor (size)
           (super (1- size)))
       (defun boast ()
-        (+ (chain super (boast)) "???")))
+        (+ (chain super (boast)) "???"))
+      (set legs (count)
+           (setf (@ this _legs) count))
+      (get legs ()
+           (@ this _legs)))
 
     (chain console (log big-thing))
 
@@ -101,7 +105,25 @@
              (chain (expect (@ thing size)) to (equal 18))))
        (it "Should call superclass method"
            (lambda ()
-             (chain (expect (chain thing (boast))) to (equal "36???"))))))
+             (chain (expect (chain thing (boast))) to (equal "36???"))))
+       (it "Should have getter/setter support"
+           (lambda ()
+             (setf (@ thing legs) 6)
+             (chain (expect (@ thing legs)) to (equal 6))))))
+
+    (describe
+     "import"
+     (lambda ()
+       (import (a (b x) c) "./Module.js")
+       (it "Should bind same names from module"
+           (lambda ()
+             (chain (expect a) to (equal 1))))
+       (it "Should bind to alternative names when asked"
+           (lambda ()
+             (chain (expect x) to (equal 2))))
+       (it "Should use new names that were specified by export"
+           (lambda ()
+             (chain (expect c) to (equal 3))))))
     ))
 
   #|
@@ -117,12 +139,24 @@ list6
 
 |#
 
+(defun write-test-module ()
+  (with-open-file (s (asdf:system-relative-pathname 'test-paren6 "test/module.js")
+                     :direction :output :if-exists :supersede :if-does-not-exist :create)
+    (write-string
+     (ps
+       (defvar a 1)
+       (defvar b 2)
+       (defvar d 3)
+       (export (a b (d c))))
+     s)))
+
 (defun run-tests ()
+  (write-test-module)
   (with-open-file (s (asdf:system-relative-pathname 'test-paren6 "test/tests.js")
                      :direction :output :if-exists :supersede :if-does-not-exist :create)
     (write-string (print (tests)) s))
   (uiop:with-current-directory ((asdf:system-source-directory 'test-paren6))
-    (print
+    (princ
      (with-output-to-string (out)
        (external-program:run
         "test/node_modules/mocha/bin/mocha" nil :output out :error :output)))))

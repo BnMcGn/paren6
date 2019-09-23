@@ -313,7 +313,22 @@ Note that export-default will overwrite the results of any earlier calls to expo
 (defpsmacro import ((&rest names) module)
   "Import from a javascript file or library. The second parameter, module, is a string that specifies the source. The first parameter is a list of names to be bound to things from the incoming module.
 
-Import expects that any symbol in the names list can be found in the import. The item will be bound to the same name in the current environment. If you wish to bind something "
+Import expects that any symbol in the names list can be found in the import. The item will be bound to the same name in the current environment. If you wish to bind something to an alternate name, place the name in a list, followed by the alternate name.
+
+For example:
+
+    (import (a (b x)) \"./my-module.js\")
+
+will bind the item 'a' from my-module.js to 'a' in the present module, and will bind 'b' to 'x'.
+
+You may also import the default export:
+
+    (import ((:default -my-module)) \"./my-module.js\")
+
+or import the entire module into an object:
+
+    (import ((:all -my-module)) \"./my-module.js\")
+"
   (let ((modstor (gensym "modstor")))
     `(let ((,modstor (require ,module)))
        ,@(mapcar

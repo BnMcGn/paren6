@@ -93,8 +93,6 @@
       (get legs ()
            (@ this _legs)))
 
-    (chain console (log big-thing))
-
     (defvar thing (new (reasonable-thing 10)))
 
     (describe
@@ -114,7 +112,7 @@
     (describe
      "import"
      (lambda ()
-       (import (a (b x) c) "./Module.js")
+       (import (a (b x) c) "./module.js")
        (it "Should bind same names from module"
            (lambda ()
              (chain (expect a) to (equal 1))))
@@ -123,7 +121,23 @@
              (chain (expect x) to (equal 2))))
        (it "Should use new names that were specified by export"
            (lambda ()
-             (chain (expect c) to (equal 3))))))
+             (chain (expect c) to (equal 3))))
+       (import ((:default y)) "./module.js")
+       (it "Should supply the default export on request"
+           (lambda ()
+             (chain (expect y) to have (property "a" 1))))
+       (import ((:all z)) "./module.js")
+       (it "Should supply the whole export module on request"
+           (lambda ()
+             (chain (expect z) to have (property "a" 1))))))
+
+    (describe
+     "export-default"
+     (lambda ()
+       (export-default 3)
+       (it "Should set module.exports to the requested value"
+           (lambda ()
+             (chain (expect (@ module exports)) to (equal 3)))))
     ))
 
   #|

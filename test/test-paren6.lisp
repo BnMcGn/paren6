@@ -134,24 +134,29 @@
     (describe
      "export-default"
      (lambda ()
-       (export-default 3)
        (it "Should set module.exports to the requested value"
            (lambda ()
-             (chain (expect (@ module exports)) to (equal 3)))))
+             (export-default 3)
+             (chain (expect (@ module exports)) to (equal 3))))))
+
+    (describe
+     "export"
+     (lambda ()
+       (it "Should set module.exports to the requested import"
+           (lambda ()
+             (export (a b c) :from "./module.js")
+             (chain (expect (@ module exports a)) to (equal 1))))
+       (it "Should export an object"
+           (lambda ()
+             (export nil :source (create a 10 b 20))
+             (chain (expect (@ module exports b)) to (equal 20))))
+       (it "Should add a variable to module.exports"
+           (lambda ()
+             (defvar c 30)
+             (export (c))
+             (chain (expect (@ module exports)) to be (an "object") with (property "c" 30))))))
     ))
 
-  #|
-
-list6
-  create6
-  defclass6
-  =>
-  export
-  import
-  export-default
-  const6
-
-|#
 
 (defun write-test-module ()
   (with-open-file (s (asdf:system-relative-pathname 'test-paren6 "test/module.js")

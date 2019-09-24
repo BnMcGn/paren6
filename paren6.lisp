@@ -281,6 +281,8 @@ Note that paren6 uses CommonJS exports internally. Because CommonJS doesn't have
       (error
        "Either a list of symbols must be supplied or a :from or :source parameter must be present."))
     `(let ((,obj ,objsource))
+       (unless (eql "object" (typeof (@ module exports)))
+         (setf (@ module exports) (create)))
        ,@(if symbol-list
              (mapcar (lambda (sym)
                        (let* ((outsym (if (listp sym) (second sym) sym))

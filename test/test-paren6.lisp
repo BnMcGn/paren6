@@ -173,12 +173,14 @@
   (write-test-module)
   (with-open-file (s (asdf:system-relative-pathname 'test-paren6 "test/tests.js")
                      :direction :output :if-exists :supersede :if-does-not-exist :create)
-    (write-string (print (tests)) s))
+    (write-string (tests) s))
   (uiop:with-current-directory ((asdf:system-source-directory 'test-paren6))
     (princ
      (with-output-to-string (out)
        (external-program:run
-        "test/node_modules/mocha/bin/mocha" nil :output out :error :output)))))
+        "mocha" nil :output out :error :output)))))
+
+(run-tests)
 
 #|
 (defun run-tests ()

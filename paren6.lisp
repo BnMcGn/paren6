@@ -13,20 +13,8 @@
               ,(symbol-to-js-string name)
             (create :value ,value :enumerable t :writable false :configurable false))))
 
-#|
-Constant declaration
-
-ES6 introduced the const keyword, which cannot be redeclared or reassigned, but is not immutable.
-
-// ES6
-const CONST_IDENTIFIER = 0; // constants are uppercase by convention
-
-    MDN Reference: const
-
-|#
-
 (defpsmacro => (params &body body)
-  "The parenscript equivalent of the ES6 arrow operator. => is different from lambda in two ways. It doesn't have its own copy of 'this' and when invoked with a single parameter, that parameter doesn't need to be enclosed in a list."
+  "The parenscript equivalent of the ES6 arrow operator. => is different from lambda in two ways. It doesn't have its own copy of 'this' and when invoked with a single parameter, that parameter doesn't need to be enclosed in parentheses."
   (let ((params (if (listp params) params (list params))))
     `(chain (lambda ,params ,@body) (bind this))))
 
@@ -64,7 +52,7 @@ const CONST_IDENTIFIER = 0; // constants are uppercase by convention
 
 
 (defpsmacro create6 (&rest items-pairlists-and-dotted)
-  "Due to the differences in lisp vs. javascript syntax, the ES6 shorthand for same name properties is somewhat counterintuitive. Create6 implements it by assuming that any symbol found at the top level of the macro is meant to refer to a variable of the same name. Non same name pairs must be placed in parentheses.
+  "Create6 implements similar object creation shorthand to that of ES6. Due to basic differences between lisp and javascript syntax, the form of the shorthand diverges somewhat from that of ES6. This is most pronounced in same name support. Create6 implements it by assuming that any symbol found at the top level of the macro is meant to refer to a variable of the same name. Non same name pairs must be placed in parentheses.
 
 Given this ES6:
 
@@ -173,7 +161,12 @@ results in
 
 ;;;Defclass6 stuff
 
-(setf (gethash 'chain2 parenscript::*macro-toplevel*) (gethash 'chain parenscript::*macro-toplevel*))
+
+
+(if (find-symbol "PS-MACRO-FUNCTION" :parenscript)
+    (eval '(setf (ps-macro-function 'chain2) (ps-macro-function 'chain)))
+    (setf (gethash 'chain2 parenscript::*macro-toplevel*)
+          (gethash 'chain parenscript::*macro-toplevel*)))
 
 (defun super-wrap (code superclass has-super)
   ;;Only add access to super class constructor if there is a parent class
@@ -346,86 +339,3 @@ or import the entire module into an object:
               (t `(var ,(second name) (@ ,modstor ,(car name))))))
           names))))
 
-
-#|
-Promises/Callbacks
-
-Promises represent the completion of an asynchronous function. They can be used as an alternative to chaining functions.
-
-// ES5 callback
-function doSecond() {
-    console.log('Do second.');
-}
-
-function doFirst(callback) {
-    setTimeout(function() {
-        console.log('Do first.');
-
-        callback();
-    }, 500);
-}
-
-doFirst(doSecond);
-
-// ES6 Promise
-let doSecond = () => {
-    console.log('Do second.');
-}
-
-let doFirst = new Promise((resolve, reject) => {
-    setTimeout(() => {
-        console.log('Do first.');
-        
-        resolve();
-    }, 500);
-});
-  
-doFirst.then(doSecond);
-
-An example below using XMLHttpRequest, for demonstrative purposes only (Fetch API would be the proper modern API to use).
-
-// ES5 callback
-function makeRequest(method, url, callback) {
-    var request = new XMLHttpRequest();
-
-    request.open(method, url);
-    request.onload = function() {
-        callback(null, request.response);
-    };
-    request.onerror = function() {
-        callback(request.response);
-    };
-    request.send();
-}
-
-makeRequest('GET', 'https://url.json', function (err, data) {
-        if (err) { 
-            throw new Error(err);
-        } else {
-            console.log(data);
-        }
-    }
-);
-
-// ES6 Promise
-function makeRequest(method, url) {
-    return new Promise((resolve, reject) => {
-        let request = new XMLHttpRequest();
-
-        request.open(method, url);
-        request.onload = resolve;
-        request.onerror = reject;
-        request.send();
-    });
-}
-
-makeRequest('GET', 'https://url.json')
-.then(event => {
-    console.log(event.target.response);
-})
-.catch(err => {
-    throw new Error(err);
-});
-
-
-|#

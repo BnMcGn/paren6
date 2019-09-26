@@ -4,8 +4,8 @@
 Paren6 is a set of ES6 macros for Parenscript.
 
 Many modern Javascript examples are given in ES6 code. While almost 
-everything that ES6 does can be replicated in standard ES5, it often takes 
-considerable boilerplate to get it done. This library is designed to ease 
+everything that ES6 does can be replicated in standard ES5, considerable 
+boilerplate is often needed to get it done. This library is designed to ease 
 the task of transcribing ES6 code into Parenscript, either by providing 
 ES6-like macros or by documenting existing features of Parenscript that 
 fill the desired function.
@@ -14,7 +14,7 @@ Paren6, like Parenscript, outputs ES5 compatible code.
 
 ## License
 
-Specify license here
+Apache License, version 2.0
 
 
 
@@ -31,54 +31,52 @@ let x = 0;
 
 
 
-## Constant declaration
+## Constant declaration - defconstant6
 
-ES6 introduced the const keyword, which cannot be redeclared or reassigned, but is not immutable.
+As per ES6, the variable cannot be redeclared or redefined, but its contents may be mutable.
 
-;;Defconstant?
+In parenscript:
 
-(defpsmacro const6 (name value)
-  "As per ES6, the variable cannot be redeclared or redefined, but its contents may be mutable.
-This version may not work in block scope."
-  `(chain -object
-          (define-property
-              (if (eql (typeof global) "object") global window)
-              ,name
-            (create :value ,value :enumerable t :writable false :configurable false))))
+    (defconstant6 *constant* 0)
+    
+In ES6:
 
-// ES6
-const CONST_IDENTIFIER = 0; // constants are uppercase by convention
-
-
+    const CONSTANT = 0;
+    
 
 ## Arrow functions
 
-The arrow function expression syntax is a shorter way of creating a function expression. Arrow functions do not have their own this, do not have prototypes, cannot be used for constructors, and should not be used as object methods.
+The parenscript equivalent of the ES6 arrow operator. => is different from lambda in two ways. It doesn't have its own copy of 'this' and when invoked with a single parameter, that parameter doesn't need to be enclosed in parentheses.
 
+In contrast to ES6 arrow functions, the paren6 version follows lisp syntax rules, placing the => symbol first.
 
-(defpsmacro => (params &body body)
-  (let ((params (if (listp params) params (list params))))
-    `(chain (lambda ,params ,@body) (bind this))))
+Parenscript:
 
-## Template literals
-Concatenation/string interpolation
+    (=> x (expt x 2))
+    
+ES6:
+    
+    x => x**2
+    
+## String interpolation
 
-;; Parenscript has (format)? Don't need. Also should be done at parenscript level.
-
-    MDN Reference: Expression interpolation
+Not implemented
 
 ## Multi-line strings
 
-;; Parenscript has native support.
-
+Parenscript has native support for multi-line strings.
 
 ## Implicit returns
 
-;; Paren has already
+Parenscript, as a lisp, supports implicit returns by default.
 
+## Spread syntax
 
+Spread syntax, where implemented in paren6, is indicated with the `:...` keyword.
 
-  "Due to the differences in lisp vs. javascript syntax, the ES6 shorthand for same name properties is somewhat counterintuitive. Create6 implements it by assuming that any symbol found at the top level of the macro is meant to refer to a variable of the same name. Non same name pairs must be placed in parentheses.
+## Shorthand in object definitions - create6
+
+The create6 macro implements matching shorthand to that of ES6. Due to basic differences between lisp and javascript syntax, the form of the shorthand diverges somewhat from ES6. This is most pronounced in same name support. Create6 implements it by assuming that any symbol found at the top level of the macro is meant to refer to a variable of the same name. Non same name pairs must be placed in parentheses.
 
 Given this ES6:
 
@@ -100,47 +98,56 @@ Create6 also supports spread syntax in its top level. An object following the :.
 
 results in
 
-    {a: 1, b: 3, c: 2, d: 5} "
+    {a: 1, b: 3, c: 2, d: 5}
 
-## Key/property shorthand
+Create6 allows the insertion of setters, getters and ordinary functions in place. Placed in the top level of the macro, they take this form:
 
-ES6 introduces a shorter notation for assigning properties to variables of the same name.
+    (<functype> <name> (<lambda list>) <body>)
 
-// ES5
-var obj = { 
-    a: a, 
-    b: b
-}
+where functype is one of get, set or defun. On the odd chance that you wish to start a toplevel list with one of these symbols and not have it turned into a function, use a keyword.
 
-// ES6
-let obj = { 
-    a, 
-    b
-}
+    (create6 a b (defun c (...) ...) d (:get e))
 
+results in
 
-## Method definition shorthand
+    {a: a,
+     b: b,
+     c: function (...) {...},
+     d: d,
+     get: e} 
 
-The function keyword can be omitted when assigning methods on an object.
+## Spread syntax in lists - list6
 
+List6 creates lists much like the regular list macro, but adds the `:...` spread syntax operator, allowing other lists to be spread into the created list.
 
-// ES6
-let obj = {
-    a(c, d) {},
-    b(e, f) {}
-}
+    (let ((arr (list 1 2 3)))
+      (create6 4 :... arr 5 6 :... arr))
 
+results in
 
+    [4, 1, 2, 3, 5, 6, 1, 2, 3]
+    
+## Spread syntax in function calls
+
+Not implemented - although apply can be used to similar effect.
 
 ## Destructuring
 
-Use curly brackets to assign properties of an object to their own variable.
+ES6 supports destructuring of objects in this manner:
 
-var obj = { a: 1, b: 2, c: 3 };
+    var obj = { a: 1, b: 2, c: 3 };
+    let {a, b, c} = obj;
+    
+Similar results can be achieved with parenscript's with-slots macro:
 
-// ES6
-let {a, b, c} = obj;
+    (with-slots (a b c) obj
+      ...)
+      
+The variables will only be bound within the scope of the macro. Also, any changes to them will be transmitted to the slots in the object.
 
+Parenscript also includes a destructuring-bind macro, which is worth considering if you wish to destructure lists.
+
+## Iteration
 
 ;; Use dolist in place of for-of. We also have for-in.
 
@@ -153,33 +160,12 @@ for (let i of arr) {
 
 ## Default parameters
 
-;; Parenscript already supports default parameters
+Parenscript supports lisp-style default parameters:
 
-
-
-"List6 creates lists much like the regular list macro, but adds the `:...` spread syntax operator, allowing other lists to be spread into the created list.
-
-    (let ((arr (list 1 2 3)))
-      (create6 4 :... arr 5 6 :... arr))
-
-results in
-
-    [4, 1, 2, 3, 5, 6, 1, 2, 3]''"
-
-;; For function arguments: we have apply. Otherwise, this might need to be implemented
-;; at the parenscript level.
-
-## Spread syntax
-
-
-Spread syntax can be used for function arguments.
-
-// ES6
-let arr1 = [1, 2, 3];
-let func = (a, b, c) => a + b + c;
-
-console.log(func(...arr1);); // 6 
-
+    (defun func (x &optional (y 0))
+       ...)
+       
+The parameter `y` will be set to 0 unless the user supplies another value.
 
 ## Classes/constructor functions
 
@@ -190,115 +176,12 @@ console.log(func(...arr1);); // 6
 
 
 
-## Modules - export/import
-
-(defpsmacro export ((&rest symbol-list) &key from source)
-
-(defpsmacro export-default (item &key from)
-
-(defpsmacro import ((&rest names) module)
+## Modules - export, export-default, import
 
 
 
-Modules can be created to export and import code between files.
-
-<!-- index.html -->
-<script src="export.js"></script>
-<script type="module" src="import.js"></script>
-
-// export.js
-let func = a => a + a;
-let obj = {};
-let x = 0;
-
-export { func, obj, x };
-
-// import.js
-import { func, obj, x } from './export.js';
-
-console.log(func(3), obj, x);
-
-    MDN Reference: export
-    MDN Reference: import
-
-Promises/Callbacks
-
-Promises represent the completion of an asynchronous function. They can be used as an alternative to chaining functions.
-
-// ES5 callback
-function doSecond() {
-    console.log('Do second.');
-}
-
-function doFirst(callback) {
-    setTimeout(function() {
-        console.log('Do first.');
-
-        callback();
-    }, 500);
-}
-
-doFirst(doSecond);
-
-// ES6 Promise
-let doSecond = () => {
-    console.log('Do second.');
-}
-
-let doFirst = new Promise((resolve, reject) => {
-    setTimeout(() => {
-        console.log('Do first.');
-        
-        resolve();
-    }, 500);
-});
-  
-doFirst.then(doSecond);
-
-An example below using XMLHttpRequest, for demonstrative purposes only (Fetch API would be the proper modern API to use).
-
-// ES5 callback
-function makeRequest(method, url, callback) {
-    var request = new XMLHttpRequest();
-
-    request.open(method, url);
-    request.onload = function() {
-        callback(null, request.response);
-    };
-    request.onerror = function() {
-        callback(request.response);
-    };
-    request.send();
-}
-
-makeRequest('GET', 'https://url.json', function (err, data) {
-        if (err) { 
-            throw new Error(err);
-        } else {
-            console.log(data);
-        }
-    }
-);
-
-// ES6 Promise
-function makeRequest(method, url) {
-    return new Promise((resolve, reject) => {
-        let request = new XMLHttpRequest();
-
-        request.open(method, url);
-        request.onload = resolve;
-        request.onerror = reject;
-        request.send();
-    });
-}
-
-makeRequest('GET', 'https://url.json')
-.then(event => {
-    console.log(event.target.response);
-})
-.catch(err => {
-    throw new Error(err);
-});
 
 
-|#
+## Promises/Callbacks
+
+Not implemented

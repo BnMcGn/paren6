@@ -16,21 +16,18 @@ Paren6, like Parenscript, outputs ES5 compatible code.
 
 Apache License, version 2.0
 
-
+# Documentation
 
 ## Variable declaration
 
-ES6 introduced the let keyword, which allows for block-scoped variables which cannot be hoisted or redeclared.
+Paren6 does not have a direct analogue to ES6 let.
 
-// ES5
-var x = 0;
+Parenscript's lisp-style let takes the following form:
 
-// ES6
-let x = 0;
-
-
-
-
+    (let ((var-a "value")
+          (var-b 3))
+      ... <code that uses the variables>)
+      
 ## Constant declaration - defconstant6
 
 As per ES6, the variable cannot be redeclared or redefined, but its contents may be mutable.
@@ -149,14 +146,9 @@ Parenscript also includes a destructuring-bind macro, which is worth considering
 
 ## Iteration
 
-;; Use dolist in place of for-of. We also have for-in.
+For-of is not implemented
 
-Array iteration (looping)
-
-// ES6
-for (let i of arr) {
-    console.log(i);
-}
+Part of its functionality is covered by native lisp tools like dolist and loop.
 
 ## Default parameters
 
@@ -167,21 +159,75 @@ Parenscript supports lisp-style default parameters:
        
 The parameter `y` will be set to 0 unless the user supplies another value.
 
-## Classes/constructor functions
+## Classes - defclass6
 
-;;FIXME: add setter/getter and super support
-;;FIXME: check over "extends" expression support.
+Defclass6 is used to define ES6 style classes. It takes the following form:
 
-(defpsmacro defclass6 ((name &optional extends) &body body)
+    (defclass6 (classname parent)
+      (defun constructor () ...)
+      (defun method () ...)
+      (defstatic static-method () ...)
+      (get item () ...)
+      (set item (value) ...))
 
+The parent class is optional. If it is provided, then (super ...) is defined inside of the constructor and results in a call to the parent constructor. Bound superclass methods are available under (chain super (methodname ...)). Note that super.methodname style calls will not work.
+
+As in ES6, the method named 'constructor' is recognized as the constructor. Static methods, getters and setters are also available as per the form above. 
 
 
 ## Modules - export, export-default, import
 
+### export
 
+The export macro registers items in the module.exports object so that the current Javascript file can be imported by other files.
+
+The first parameter, a list of symbols, is the set of names to be added to the export list. It will be taken from the environment if no :from or :source parameter is specified. If the symbol list is empty, the entire :from or :source object will have its keys exported. If no :from or :source is specified, then the symbol list can not be empty.
+
+Use the :from keyword to export from another module or submodule. The :source keyword is used to export an object or portions of an object in the current namespace.
+
+Examples:
+
+    (export (a b c) :from "./module.js")
+    
+    (export (a b c) :source an-object)
+
+Note that paren6 uses CommonJS exports internally. Because CommonJS doesn't have a dedicated slot for default exports, mixing calls to export and export-default within the same module will cause overwriting.
+
+### export-default
+
+The export-default macro replaces the contents of module.exports with the specified item. If the :from parameter names a module, item will be taken from that module. If item is NIL, the whole module will be exported.
+
+### import
+
+Import from a javascript file or library. The second parameter, module, is a string that specifies the source. The first parameter is a list of names to be bound to things from the incoming module.
+
+Import expects that any symbol in the names list can be found in the import. The item will be bound to the same name in the current environment. If you wish to bind something to an alternate name, place the name in parentheses, followed by the alternate name.
+
+For example:
+
+    (import (a (b x)) "./my-module.js")
+
+will bind the item 'a' from my-module.js to 'a' in the present module, and will bind 'b' to 'x'.
+
+You may also import the default export:
+
+    (import ((:default -my-module)) "./my-module.js")
+
+or import the entire module into an object:
+
+    (import ((:all -my-module)) "./my-module.js")
 
 
 
 ## Promises/Callbacks
 
 Not implemented
+
+# Testing
+
+Paren6 uses node, mocha and chai in its tests. If you wish to run them:
+
+    >npm install --global mocha
+    >npm install --global chai
+    
+Ensure that the mocha executable is in your search path.

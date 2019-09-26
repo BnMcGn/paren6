@@ -161,13 +161,12 @@ results in
 
 ;;;Defclass6 stuff
 
-
-
 (if (find-symbol "PS-MACRO-FUNCTION" :parenscript)
     (eval '(setf (ps-macro-function 'chain2) (ps-macro-function 'chain)))
     (setf (gethash 'chain2 parenscript::*macro-toplevel*)
           (gethash 'chain parenscript::*macro-toplevel*)))
 
+;;FIXME: Add support for (funcall (@ super <method>)) style calls
 (defun super-wrap (code superclass has-super)
   ;;Only add access to super class constructor if there is a parent class
   (when (some (lambda (x)
@@ -216,7 +215,7 @@ results in
       (get item () ...)
       (set item (value) ...))
 
-The parent class is optional. If it is provided, then (super) is defined inside of the constructor and results in a call to the parent constructor. Bound superclass methods are available under (chain super (methodname ...)). Note that super.methodname style calls will not work.
+The parent class is optional. If it is provided, then (super ...) is defined inside of the constructor and results in a call to the parent constructor. Bound superclass methods are available under (chain super (methodname ...)). Note that super.methodname style calls will not work.
 
 As in ES6, the method named 'constructor' is recognized as the constructor. Static methods, getters and setters are also available as per the form above. "
   (let ((constructor nil)

@@ -43,7 +43,7 @@ In ES6:
 
 ## Arrow functions
 
-The parenscript equivalent of the ES6 arrow operator. => is different from lambda in two ways. It doesn't have its own copy of 'this' and when invoked with a single parameter, that parameter doesn't need to be enclosed in parentheses.
+The parenscript equivalent of the ES6 arrow operator, `=>`, is different from lambda in two ways. It doesn't have its own copy of 'this' and when invoked with a single parameter, that parameter doesn't need to be enclosed in parentheses.
 
 In contrast to ES6 arrow functions, the paren6 version follows lisp syntax rules, placing the => symbol first.
 
@@ -85,7 +85,7 @@ the equivalent create6 macro reads:
 
 Multiple pairs can be placed in a single list.
 
-Create6 also supports spread syntax in its top level. An object following the :... keyword in the body of the macro will have its fields copied into the newly created object.
+Create6 also supports spread syntax in its top level. An object following the `:...` keyword in the body of the macro will have its fields copied into the newly created object.
 
     (let
        ((a 1)
@@ -181,9 +181,9 @@ As in ES6, the method named 'constructor' is recognized as the constructor. Stat
 
 The export macro registers items in the module.exports object so that the current Javascript file can be imported by other files.
 
-The first parameter, a list of symbols, is the set of names to be added to the export list. It will be taken from the environment if no :from or :source parameter is specified. If the symbol list is empty, the entire :from or :source object will have its keys exported. If no :from or :source is specified, then the symbol list can not be empty.
+The first parameter, a list of symbols, is the set of names to be added to the export list. It will be taken from the environment if no `:from` or `:source` parameter is specified. If the symbol list is empty, the entire `:from` or `:source` object will have its keys exported. If no `:from` or `:source` is specified, then the symbol list can not be empty.
 
-Use the :from keyword to export from another module or submodule. The :source keyword is used to export an object or portions of an object in the current namespace.
+Use the `:from` keyword to export from another module or submodule. The `:source` keyword is used to export an object or portions of an object in the current namespace.
 
 Examples:
 
@@ -195,7 +195,7 @@ Note that paren6 uses CommonJS exports internally. Because CommonJS doesn't have
 
 ### export-default
 
-The export-default macro replaces the contents of module.exports with the specified item. If the :from parameter names a module, item will be taken from that module. If item is NIL, the whole module will be exported.
+The export-default macro replaces the contents of module.exports with the specified item. If the `:from` parameter names a module, item will be taken from that module. If item is NIL, the whole module will be exported.
 
 ### import
 

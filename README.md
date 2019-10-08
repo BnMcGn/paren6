@@ -118,7 +118,7 @@ results in
 List6 creates lists much like the regular list macro, but adds the `:...` spread syntax operator, allowing other lists to be spread into the created list.
 
     (let ((arr (list 1 2 3)))
-      (create6 4 :... arr 5 6 :... arr))
+      (list6 4 :... arr 5 6 :... arr))
 
 results in
 

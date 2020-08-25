@@ -324,17 +324,41 @@ or import the entire module into an object:
     (import ((:all -my-module)) \"./my-module.js\")
 "
   (let ((modstor (gensym "modstor")))
-    `(let ((,modstor (require ,module)))
-       ,@(mapcar
-          (lambda (name)
-            (cond
-              ((atom name) `(var ,name (@ ,modstor ,name)))
-              ((eq (car name) :all) `(var ,(second name) ,modstor))
-              ((eq (car name) :default)
-               `(var ,(second name)
+    `(eval
+      (or
+       (lisp
+        (ps
+          (defparameter ,modstor (require ,module))
+          ,@(mapcar
+             (lambda (name)
+               (cond
+                 ((atom name) `(defparameter ,name (@ ,modstor ,name)))
+                 ((eq (car name) :all) `(defparameter ,(second name) ,modstor))
+                 ((eq (car name) :default)
+                  `(defparameter ,(second name)
                      (if (and ,modstor (@ ,modstor __es-module))
                          (@ ,modstor default)
                          ,modstor)))
-              (t `(var ,(second name) (@ ,modstor ,(car name))))))
-          names))))
+                 (t `(defparameter ,(second name) (@ ,modstor ,(car name))))))
+             names)))
+       ;;This is non-op for browserify, etc to find. It won't be found inside of an eval string.
+       (require ,module)))))
 
+(defpsmacro import-into (target (&rest names) module)
+  "Import-into operates like import, but places the requested items from *module* into the object specified in *target* instead of into the current namespace."
+  (let ((modstor (gensym "modstor"))
+        (tgt (gensym "target")))
+    `(let ((,modstor (require ,module))
+           (,tgt ,target))
+       ,@(mapcar
+          (lambda (name)
+            (cond
+              ((atom name) `(setf (@ ,tgt ,name) (@ ,modstor ,name)))
+              ((eq (car name) :all) `(setf (@ ,tgt ,(second name)) ,modstor))
+              ((eq (car name) :default)
+               `(setf (@ ,tgt ,(second name)
+                              (if (and ,modstor (@ ,modstor __es-module))
+                                  (@ ,modstor default)
+                                  ,modstor))))
+              (t `(setf (@ ,tgt ,(second name) (@ ,modstor ,(car name)))))))
+          names))))

@@ -14,4 +14,5 @@
    #:=>
    #:defclass6
    #:defconstant6
-   #:super))
+   #:super
+   #:import-into))

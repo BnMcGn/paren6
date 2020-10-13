@@ -179,7 +179,7 @@ results in
       `(macrolet ((super (&rest params)
                     `(chain2 ,,`',superclass (call this ,@params)))
                   (chain (&body body)
-                    (if (string-equal (car body) 'super)
+                    (if (and (symbolp (car body)) (string-equal (car body) 'super))
                         (if (listp (second body))
                             (destructuring-bind (_ (method &rest params) &rest more) body
                               (declare (ignore _))

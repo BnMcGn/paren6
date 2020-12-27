@@ -205,6 +205,11 @@ results in
     `(setf (@ ,classname ,methodname)
            (lambda ,params ,@body))))
 
+(defun proc-static-item (classname code)
+  (let ((name (second code))
+        (item (third code)))
+    `(setf (@ ,classname ,name) ,item)))
+
 (defpsmacro defclass6 ((name &optional extends) &body body)
   "Defclass6 is used to define ES6 style classes. It takes the following form:
 
@@ -212,6 +217,7 @@ results in
       (defun constructor () ...)
       (defun method () ...)
       (defstatic static-method () ...)
+      (static ...)
       (get item () ...)
       (set item (value) ...))
 
@@ -232,6 +238,8 @@ As in ES6, the method named 'constructor' is recognized as the constructor. Stat
          (push (super-wrap (proc-defun name itm) extends-sym extends) methods))
         ((string-equal (car itm) 'defstatic)
          (push (super-wrap (proc-static name itm) extends-sym extends) methods))
+        ((string-equal (car itm) 'static)
+         (push (proc-static-item name itm) methods))
         ((string-equal (car itm) 'get)
          (push itm get-and-set))
         ((string-equal (car itm) 'set)

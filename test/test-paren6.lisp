@@ -76,6 +76,18 @@
              (chain (expect sample-constant)
                     to be true)))))
 
+    (describe
+     "for-of"
+     (lambda ()
+       (defvar astring "string")
+       (defvar result [])
+       (it "Should iterate over a string"
+           (lambda ()
+             (for-of
+              (char astring)
+              (chain result (push (chain char (to-upper-case)))))
+             (chain (expect result) to (eql (list "S" "T" "R" "I" "N" "G")))))))
+
     (defclass6 (big-thing)
         (defun constructor (size)
           (setf (@ this size) (chain big-thing (estimate size))))

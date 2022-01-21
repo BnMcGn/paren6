@@ -159,6 +159,26 @@ results in
       (push (cons 'list (nreverse curr)) accum))
     `(apply (@ -array prototype concat) ,@(nreverse accum))))
 
+(defpsmacro for-of ((var src) &body body)
+  "The for-of macro is for stepping over ES6 iterators, including strings, maps, arrays and sets. For example, you might wish to step over the characters in a string:
+
+    for (const char of \"Help, I'm trapped in this string!\") {
+      ...
+    }
+
+The parenscript equivalent will be:
+
+    (for-of (char \"Hey! Can you hear me out there??\")
+      ...)
+"
+  (let ((iter-var (gensym "iter"))
+        (result-var (gensym "res")))
+    `(loop with ,iter-var = (chain ((getprop ,src (@ -symbol iterator))))
+           for ,result-var = (chain ,iter-var (next))
+           while (not (@ ,result-var :done))
+           do (let ((,var (@ ,result-var :value)))
+                ,@body))))
+
 ;;;Defclass6 stuff
 
 (if (find-symbol "PS-MACRO-FUNCTION" :parenscript)
@@ -370,3 +390,4 @@ or import the entire module into an object:
                                   ,modstor))))
               (t `(setf (@ ,tgt ,(second name) (@ ,modstor ,(car name)))))))
           names))))
+

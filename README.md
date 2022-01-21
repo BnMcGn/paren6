@@ -146,10 +146,17 @@ Parenscript also includes a destructuring-bind macro, which is worth considering
 
 ## Iteration
 
-For-of is not implemented
+Paren6 supplies the for-of macro for stepping over ES6 iterators, including strings, maps, arrays and sets. For example, you might wish to step over the characters in a string:
 
-Part of its functionality is covered by native lisp tools like dolist and loop.
+    for (const char of "Help, I'm trapped in this string!") {
+      ...
+    }
 
+The parenscript equivalent will be:
+
+    (for-of (char "Hey! Can you hear me out there??")
+      ...)
+      
 ## Default parameters
 
 Parenscript supports lisp-style default parameters:

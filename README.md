@@ -224,7 +224,9 @@ or import the entire module into an object:
 
     (import ((:all -my-module)) "./my-module.js")
 
+## Async/Await
 
+Support for async/await in parenscript can be found in [paren-async](https://github.com/Junker/paren-async).
 
 ## Promises/Callbacks
 
